@@ -1,8 +1,21 @@
-# 0 1 0 0
-# 0 0 1 0
-# 1 0 0 0
-# 0 0 1 0
-real_map = [[0, 1, 0, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 1, 0]]
+import sys
+import pygame
+# 0 1 0 0 0 0 1 0 1 0
+# 0 0 1 0 0 1 0 0 0 0
+# 1 0 0 0 0 0 0 1 0 1
+# 0 0 1 0 0 1 0 0 1 1
+real_map = [[0, 1, 0, 0, 0, 0, 1, 0, 1, 0],
+            [0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+            [0, 0, 1, 0, 0, 1, 0, 0, 1, 1],
+            [0, 0, 1, 0, 0, 1, 0, 0, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+            [0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 1, 0, 1, 0],
+            [1, 0, 0, 1, 0, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 0, 0, 0, 0, 0, 1]]
+
+# real_map = [[0, 1, 0, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 1, 0]]
 
 def sensor(s):
     """
@@ -32,6 +45,14 @@ class Robot():
     def print_map(self):
         for row in self.map:
             print(row)
+    
+    def seen_coords(self):
+        seen = []
+        for r in range(len(self.map)):
+            for k in range(len(self.map[0])):
+                if self.map[r][k] and (r != self.pos[0] or k != self.pos[1]):
+                    seen.append((r, k))
+        return seen
 
     def sense(self):
         top = [[x, self.pos[1]] for x in range(self.pos[0])]
@@ -68,24 +89,85 @@ class Robot():
                     self.map[v[0]][v[1]] = 1
         return 0
 
-print("Real map:")
-for r in real_map:
-    print(r)
+if sys.argv[1] == 'm':
+    print("Real map:")
+    for r in real_map:
+        print(r)
 
-r = Robot(4)
-print("Robot vision:")
-r.print_map()
-entra = input()
-while entra in ['w', 'a', 's', 'd']:
-    new_pos = [r.pos[0], r.pos[1]]
-    if entra == 'w':
-        new_pos[0] -= 1
-    elif entra == 's':
-        new_pos[0] += 1
-    elif entra == 'a':
-        new_pos[1] -= 1
-    elif entra == 'd':
-        new_pos[1] += 1
-    r.move(new_pos)
+    r = Robot(4)
+    print("Robot vision:")
     r.print_map()
     entra = input()
+    while entra in ['w', 'a', 's', 'd']:
+        new_pos = [r.pos[0], r.pos[1]]
+        if entra == 'w':
+            new_pos[0] -= 1
+        elif entra == 's':
+            new_pos[0] += 1
+        elif entra == 'a':
+            new_pos[1] -= 1
+        elif entra == 'd':
+            new_pos[1] += 1
+        r.move(new_pos)
+        r.print_map()
+        entra = input()
+    sys.exit()
+
+class GameObject():
+    def __init__(self, x, y, w, h, s, robot=None):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.s = s # speed
+        self.robot = robot
+
+    def get_rect(self):
+        return (self.x, self.y, self.w, self.h)
+
+    def update_from_bot(self):
+        modifier = 50
+        self.x = self.robot.pos[1]*modifier
+        self.y = self.robot.pos[0]*modifier
+
+
+pygame.init()
+win = pygame.display.set_mode((500, 500))
+pygame.display.set_caption("Cleaner robot example")
+bot = Robot(10)
+robot_obj = GameObject(50, 50, 50, 50, 5, bot)
+
+img = pygame.image.load('bot.png')
+img.convert()
+
+run = True
+while run:
+    pygame.time.delay(100)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+
+    keys = pygame.key.get_pressed()
+    new_pos = [bot.pos[0], bot.pos[1]]
+    if keys[pygame.K_LEFT]:
+        new_pos[1] -= 1
+    if keys[pygame.K_RIGHT]:
+        new_pos[1] += 1
+    if keys[pygame.K_UP]:
+        new_pos[0] -= 1
+    if keys[pygame.K_DOWN]:
+        new_pos[0] += 1
+    if keys[pygame.K_q]:
+        run = False
+    bot.move(new_pos)
+    robot_obj.update_from_bot()
+
+    win.fill((255, 255, 255))
+    win.blit(img, (robot_obj.get_rect()))
+    #pygame.draw.rect(win, (255, 0, 0), (robot_obj.get_rect()))
+    for c in bot.seen_coords():
+        pygame.draw.rect(win, (0, 155, 155), (c[1]*50, c[0]*50, 50, 50))
+
+    pygame.display.update()
+
+pygame.quit()
